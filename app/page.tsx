@@ -24,7 +24,8 @@ type Card = {
 export default function Component() {
   const [searchTerm, setSearchTerm] = useState<string>("")
   const [filteredCards, setFilteredCards] = useState<Card[]>([]) // Typing the state as an array of Card objects
-  const [selectedCards, setSelectedCards] = useState<number[]>([]) // Typing the state as an array of numbers
+  const [selectedCards, setSelectedCards] = useState<number[]>([]) // Typing the state as an array of card IDs
+  const [selectedCardCounts, setSelectedCardCounts] = useState<{ [key: number]: number }>({}) // Track how many times each card is selected
   const [allCards, setAllCards] = useState<Card[]>([]) // Full card database for filtering
   const [isLoading, setIsLoading] = useState<boolean>(true) // Loading state
 
@@ -40,29 +41,53 @@ export default function Component() {
     fetchCards()
   }, [])
 
-  // Update filtered cards based on the search term
+  // Update filtered cards based on the search term and exclude cards that have been selected 3 times
   useEffect(() => {
-    if (searchTerm) {
-      setFilteredCards(
-          allCards.filter(card =>
-              card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              card.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-          ).slice(0, 5) // Limit to 5 results
+    const filtered = allCards.filter(card => {
+      const count = selectedCardCounts[card.id] || 0
+      return count < 3 && (
+          card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          card.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       )
-    } else {
-      setFilteredCards(allCards.slice(0, 5)) // Reset filtered cards if search is cleared
-    }
-  }, [searchTerm, allCards]) // Depend on both searchTerm and allCards
+    })
+    setFilteredCards(filtered.slice(0, 5)) // Limit to 5 results
+  }, [searchTerm, allCards, selectedCardCounts]) // Depend on searchTerm, allCards, and selectedCardCounts
 
   const handleSelectCard = (cardId: number) => {
-    if (!selectedCards.includes(cardId)) {
-      setSelectedCards(prev => [...prev, cardId])
-    }
+    setSelectedCardCounts(prevCounts => {
+      const count = prevCounts[cardId] || 0
+      if (count < 3) {
+        return { ...prevCounts, [cardId]: count + 1 }
+      }
+      return prevCounts
+    })
+    setSelectedCards(prev => [...prev, cardId])
     setSearchTerm("")
   }
 
+  // This will remove one occurrence of the selected card
   const handleRemoveCard = (cardId: number) => {
-    setSelectedCards(prev => prev.filter(id => id !== cardId))
+    // Update the selected card counts
+    setSelectedCardCounts(prevCounts => {
+      const count = prevCounts[cardId] || 0
+      if (count > 1) {
+        return { ...prevCounts, [cardId]: count - 1 }
+      } else {
+        const { [cardId]: _, ...newCounts } = prevCounts
+        return newCounts
+      }
+    })
+
+    // Remove only the first occurrence of the cardId
+    setSelectedCards(prev => {
+      const cardIndex = prev.findIndex(id => id === cardId)
+      if (cardIndex !== -1) {
+        const updatedSelectedCards = [...prev]
+        updatedSelectedCards.splice(cardIndex, 1)
+        return updatedSelectedCards
+      }
+      return prev
+    })
   }
 
   // Get selected cards from allCards based on selectedCards state
