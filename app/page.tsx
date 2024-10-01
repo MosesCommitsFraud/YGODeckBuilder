@@ -4,13 +4,11 @@ import { useState, useEffect } from "react"
 import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Card as UiCard, CardContent } from "@/components/ui/card" // Avoid name collision by aliasing this component
+import { Card as UiCard, CardContent } from "@/components/ui/card"
 import { downloadCardDB } from "@/lib/cardCache"
 
-// Define the Card type based on your expected data structure
 type Card = {
   id: number
   name: string
@@ -23,25 +21,23 @@ type Card = {
 
 export default function Component() {
   const [searchTerm, setSearchTerm] = useState<string>("")
-  const [filteredCards, setFilteredCards] = useState<Card[]>([]) // Typing the state as an array of Card objects
-  const [selectedCards, setSelectedCards] = useState<number[]>([]) // Typing the state as an array of card IDs
-  const [selectedCardCounts, setSelectedCardCounts] = useState<{ [key: number]: number }>({}) // Track how many times each card is selected
-  const [allCards, setAllCards] = useState<Card[]>([]) // Full card database for filtering
-  const [isLoading, setIsLoading] = useState<boolean>(true) // Loading state
+  const [filteredCards, setFilteredCards] = useState<Card[]>([])
+  const [selectedCards, setSelectedCards] = useState<number[]>([])
+  const [selectedCardCounts, setSelectedCardCounts] = useState<{ [key: number]: number }>({})
+  const [allCards, setAllCards] = useState<Card[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(true)
 
   useEffect(() => {
-    // Fetch the card database when the component is mounted
     const fetchCards = async () => {
-      setIsLoading(true) // Start loading spinner
-      const cardData = await downloadCardDB() // Fetch API data and update state
-      setAllCards(cardData) // Store the full card database in allCards
-      setFilteredCards(cardData.slice(0, 5)) // Initially display first 5 cards
-      setIsLoading(false) // Stop loading spinner
+      setIsLoading(true)
+      const cardData = await downloadCardDB()
+      setAllCards(cardData)
+      setFilteredCards(cardData.slice(0, 5))
+      setIsLoading(false)
     }
     fetchCards()
   }, [])
 
-  // Update filtered cards based on the search term and exclude cards that have been selected 3 times
   useEffect(() => {
     const filtered = allCards.filter(card => {
       const count = selectedCardCounts[card.id] || 0
@@ -50,20 +46,17 @@ export default function Component() {
           card.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     })
-    setFilteredCards(filtered.slice(0, 5)) // Limit to 5 results
-  }, [searchTerm, allCards, selectedCardCounts]) // Depend on searchTerm, allCards, and selectedCardCounts
+    setFilteredCards(filtered.slice(0, 10))
+  }, [searchTerm, allCards, selectedCardCounts])
 
   const handleSelectCard = (cardId: number) => {
     setSelectedCardCounts(prevCounts => {
       const count = prevCounts[cardId] || 0
       if (count < 3) {
-        // Update the count for the selected card
         return { ...prevCounts, [cardId]: count + 1 }
       }
       return prevCounts
     })
-
-    // Add the card to the selection if the count is less than 3
     setSelectedCards(prev => {
       const count = selectedCardCounts[cardId] || 0
       if (count < 3) {
@@ -71,13 +64,10 @@ export default function Component() {
       }
       return prev
     })
-
     setSearchTerm("")
   }
 
-  // This will remove one occurrence of the selected card
   const handleRemoveCard = (cardId: number) => {
-    // Update the selected card counts
     setSelectedCardCounts(prevCounts => {
       const count = prevCounts[cardId] || 0
       if (count > 1) {
@@ -87,85 +77,31 @@ export default function Component() {
         return newCounts
       }
     })
-
-    // Remove one instance of the card from the selectedCards array
     setSelectedCards(prev => {
-      const index = prev.lastIndexOf(cardId) // Find the last occurrence to remove
+      const index = prev.lastIndexOf(cardId)
       if (index !== -1) {
         const updatedSelectedCards = [...prev]
-        updatedSelectedCards.splice(index, 1) // Remove the specific occurrence
+        updatedSelectedCards.splice(index, 1)
         return updatedSelectedCards
       }
       return prev
     })
   }
 
-  // Get selected cards from allCards based on selectedCards state
   const selectedCardDetails = selectedCards.map(id => allCards.find(card => card.id === id)).filter(Boolean) as Card[]
 
   return (
       <TooltipProvider>
         <div className="container mx-auto p-4">
           <h1 className="text-2xl font-bold mb-4">Card Catalogue</h1>
-
-          {/* Show loading spinner while the card database is being fetched */}
           {isLoading ? (
               <div className="flex justify-center items-center">
                 <p className="text-xl font-semibold">Loading card database...</p>
               </div>
           ) : (
-              <>
-                <h2 className="text-xl font-semibold mb-4">Current Selection</h2>
-                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-                  <div className="flex p-4 space-x-4">
-                    {selectedCardDetails.length > 0 ? (
-                        selectedCardDetails.map((card, index) => (
-                            <Tooltip key={card.id + "-" + index}> {/* Key uses both card id and index for uniqueness */}
-                              <TooltipTrigger asChild>
-                                <div className="w-40 shrink-0">
-                                  <div className="aspect-[3/4] relative rounded-lg overflow-hidden mb-2">
-                                    <img
-                                        src={card.image_url || "/placeholder.svg"}
-                                        alt={card.name}
-                                        className="object-cover w-full h-full"
-                                    />
-                                    <Button
-                                        variant="destructive"
-                                        size="icon"
-                                        className="absolute top-2 right-2 h-8 w-8"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleRemoveCard(card.id) // Call remove card on click
-                                        }}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span className="sr-only">Remove {card.name}</span>
-                                    </Button>
-                                  </div>
-                                  <h3 className="font-semibold text-sm truncate">{card.name}</h3>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {card.tags.map(tag => (
-                                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="w-64">
-                                <div className="flex flex-col items-center">
-                                  <p className="text-sm font-semibold">{card.name}</p>
-                                  <p className="text-xs text-muted-foreground">{card.type} - {card.rarity}</p>
-                                  <p className="text-sm mt-2">{card.description}</p>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                        ))
-                    ) : (
-                        <p className="text-muted-foreground p-4">No cards selected</p>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                <div className="mt-8">
+              <div className="flex">
+                {/* Left: Search bar and suggestions */}
+                <div className="w-1/2 p-4">
                   <Input
                       type="search"
                       placeholder="Search cards..."
@@ -174,9 +110,9 @@ export default function Component() {
                       className="mb-4"
                   />
                   {searchTerm && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {filteredCards.map(card => (
-                            <Tooltip key={card.id}>
+                            <Tooltip key={card.id} delayDuration={100} side="auto" align="center" sideOffset={5} collisionPadding={10}>
                               <TooltipTrigger asChild>
                                 <UiCard
                                     className="cursor-pointer hover:bg-accent"
@@ -193,12 +129,12 @@ export default function Component() {
                                   </CardContent>
                                 </UiCard>
                               </TooltipTrigger>
-                              <TooltipContent side="right" className="w-64">
+                              <TooltipContent className="w-auto max-w-sm">
                                 <div className="flex flex-col items-center">
                                   <img
                                       src={card.image_url || "/placeholder.svg"}
                                       alt={card.name}
-                                      className="w-24 h-24 object-cover mb-2 rounded"
+                                      className="w-20 h-20 object-contain mb-2"
                                   />
                                   <p className="text-sm font-semibold">{card.name}</p>
                                   <p className="text-xs text-muted-foreground">{card.type} - {card.rarity}</p>
@@ -210,7 +146,60 @@ export default function Component() {
                       </div>
                   )}
                 </div>
-              </>
+
+                {/* Right: Selected cards */}
+                <div className="w-1/2 p-4">
+                  <h2 className="text-xl font-semibold mb-4">Current Selection</h2>
+                  <div className="w-full auto-height rounded-md border">
+                    <div className="flex flex-wrap p-4 gap-4">
+                      {selectedCardDetails.length > 0 ? (
+                          selectedCardDetails.map((card, index) => (
+                              <Tooltip key={card.id + "-" + index} delayDuration={100} side="auto" align="center" sideOffset={5} collisionPadding={10}>
+                                <TooltipTrigger asChild>
+                                  <div className="w-32 shrink-0 group relative">
+                                    <div className="relative rounded-lg overflow-hidden mb-2">
+                                      <img
+                                          src={card.image_url || "/placeholder.svg"}
+                                          alt={card.name}
+                                          className="w-full h-full object-contain"
+                                      />
+                                      <Button
+                                          variant="destructive"
+                                          size="icon"
+                                          className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleRemoveCard(card.id)
+                                          }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="sr-only">Remove {card.name}</span>
+                                      </Button>
+                                    </div>
+                                    <h3 className="font-semibold text-sm truncate text-center">{card.name}</h3>
+                                    <div className="flex flex-wrap gap-1 justify-center mt-1">
+                                      {card.tags.map(tag => (
+                                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="w-auto max-w-sm">
+                                  <div className="flex flex-col items-center">
+                                    <p className="text-sm font-semibold">{card.name}</p>
+                                    <p className="text-xs text-muted-foreground">{card.type} - {card.rarity}</p>
+                                    <p className="text-sm mt-2">{card.description}</p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                          ))
+                      ) : (
+                          <p className="text-muted-foreground p-4">No cards selected</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
           )}
         </div>
       </TooltipProvider>
