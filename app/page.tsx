@@ -65,6 +65,9 @@ export default function Component() {
     setSelectedCards(prev => prev.filter(id => id !== cardId))
   }
 
+  // Get selected cards from allCards based on selectedCards state
+  const selectedCardDetails = selectedCards.map(id => allCards.find(card => card.id === id)).filter(Boolean) as Card[]
+
   return (
       <TooltipProvider>
         <div className="container mx-auto p-4">
@@ -80,50 +83,47 @@ export default function Component() {
                 <h2 className="text-xl font-semibold mb-4">Current Selection</h2>
                 <ScrollArea className="w-full whitespace-nowrap rounded-md border">
                   <div className="flex p-4 space-x-4">
-                    {selectedCards.length > 0 ? (
-                        selectedCards.map(id => {
-                          const card = filteredCards.find(c => c.id === id)
-                          return card ? (
-                              <Tooltip key={card.id}>
-                                <TooltipTrigger asChild>
-                                  <div className="w-40 shrink-0">
-                                    <div className="aspect-[3/4] relative rounded-lg overflow-hidden mb-2">
-                                      <img
-                                          src={card.image_url || "/placeholder.svg"}
-                                          alt={card.name}
-                                          className="object-cover w-full h-full"
-                                      />
-                                      <Button
-                                          variant="destructive"
-                                          size="icon"
-                                          className="absolute top-2 right-2 h-8 w-8"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleRemoveCard(card.id)
-                                          }}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                        <span className="sr-only">Remove {card.name}</span>
-                                      </Button>
-                                    </div>
-                                    <h3 className="font-semibold text-sm truncate">{card.name}</h3>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {card.tags.map(tag => (
-                                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
-                                      ))}
-                                    </div>
+                    {selectedCardDetails.length > 0 ? (
+                        selectedCardDetails.map(card => (
+                            <Tooltip key={card.id}>
+                              <TooltipTrigger asChild>
+                                <div className="w-40 shrink-0">
+                                  <div className="aspect-[3/4] relative rounded-lg overflow-hidden mb-2">
+                                    <img
+                                        src={card.image_url || "/placeholder.svg"}
+                                        alt={card.name}
+                                        className="object-cover w-full h-full"
+                                    />
+                                    <Button
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-2 right-2 h-8 w-8"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          handleRemoveCard(card.id)
+                                        }}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Remove {card.name}</span>
+                                    </Button>
                                   </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="w-64">
-                                  <div className="flex flex-col items-center">
-                                    <p className="text-sm font-semibold">{card.name}</p>
-                                    <p className="text-xs text-muted-foreground">{card.type} - {card.rarity}</p>
-                                    <p className="text-sm mt-2">{card.description}</p>
+                                  <h3 className="font-semibold text-sm truncate">{card.name}</h3>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {card.tags.map(tag => (
+                                        <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                                    ))}
                                   </div>
-                                </TooltipContent>
-                              </Tooltip>
-                          ) : null
-                        })
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="w-64">
+                                <div className="flex flex-col items-center">
+                                  <p className="text-sm font-semibold">{card.name}</p>
+                                  <p className="text-xs text-muted-foreground">{card.type} - {card.rarity}</p>
+                                  <p className="text-sm mt-2">{card.description}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                        ))
                     ) : (
                         <p className="text-muted-foreground p-4">No cards selected</p>
                     )}
