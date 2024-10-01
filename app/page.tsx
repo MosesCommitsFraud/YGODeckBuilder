@@ -1,101 +1,183 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState, useEffect } from "react"
+import { Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Card as UiCard, CardContent } from "@/components/ui/card" // Avoid name collision by aliasing this component
+import { downloadCardDB } from "@/lib/cardCache"
+
+// Define the Card type based on your expected data structure
+type Card = {
+  id: number
+  name: string
+  type: string
+  rarity: string
+  description: string
+  image_url: string
+  tags: string[]
+}
+
+export default function Component() {
+  const [searchTerm, setSearchTerm] = useState<string>("")
+  const [filteredCards, setFilteredCards] = useState<Card[]>([]) // Typing the state as an array of Card objects
+  const [selectedCards, setSelectedCards] = useState<number[]>([]) // Typing the state as an array of numbers
+  const [allCards, setAllCards] = useState<Card[]>([]) // Full card database for filtering
+  const [isLoading, setIsLoading] = useState<boolean>(true) // Loading state
+
+  useEffect(() => {
+    // Fetch the card database when the component is mounted
+    const fetchCards = async () => {
+      setIsLoading(true) // Start loading spinner
+      const cardData = await downloadCardDB() // Fetch API data and update state
+      setAllCards(cardData) // Store the full card database in allCards
+      setFilteredCards(cardData.slice(0, 5)) // Initially display first 5 cards
+      setIsLoading(false) // Stop loading spinner
+    }
+    fetchCards()
+  }, [])
+
+  // Update filtered cards based on the search term
+  useEffect(() => {
+    if (searchTerm) {
+      setFilteredCards(
+          allCards.filter(card =>
+              card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              card.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+          ).slice(0, 5) // Limit to 5 results
+      )
+    } else {
+      setFilteredCards(allCards.slice(0, 5)) // Reset filtered cards if search is cleared
+    }
+  }, [searchTerm, allCards]) // Depend on both searchTerm and allCards
+
+  const handleSelectCard = (cardId: number) => {
+    if (!selectedCards.includes(cardId)) {
+      setSelectedCards(prev => [...prev, cardId])
+    }
+    setSearchTerm("")
+  }
+
+  const handleRemoveCard = (cardId: number) => {
+    setSelectedCards(prev => prev.filter(id => id !== cardId))
+  }
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      <TooltipProvider>
+        <div className="container mx-auto p-4">
+          <h1 className="text-2xl font-bold mb-4">Card Catalogue</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          {/* Show loading spinner while the card database is being fetched */}
+          {isLoading ? (
+              <div className="flex justify-center items-center">
+                <p className="text-xl font-semibold">Loading card database...</p>
+              </div>
+          ) : (
+              <>
+                <h2 className="text-xl font-semibold mb-4">Current Selection</h2>
+                <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+                  <div className="flex p-4 space-x-4">
+                    {selectedCards.length > 0 ? (
+                        selectedCards.map(id => {
+                          const card = filteredCards.find(c => c.id === id)
+                          return card ? (
+                              <Tooltip key={card.id}>
+                                <TooltipTrigger asChild>
+                                  <div className="w-40 shrink-0">
+                                    <div className="aspect-[3/4] relative rounded-lg overflow-hidden mb-2">
+                                      <img
+                                          src={card.image_url || "/placeholder.svg"}
+                                          alt={card.name}
+                                          className="object-cover w-full h-full"
+                                      />
+                                      <Button
+                                          variant="destructive"
+                                          size="icon"
+                                          className="absolute top-2 right-2 h-8 w-8"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            handleRemoveCard(card.id)
+                                          }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="sr-only">Remove {card.name}</span>
+                                      </Button>
+                                    </div>
+                                    <h3 className="font-semibold text-sm truncate">{card.name}</h3>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {card.tags.map(tag => (
+                                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="w-64">
+                                  <div className="flex flex-col items-center">
+                                    <p className="text-sm font-semibold">{card.name}</p>
+                                    <p className="text-xs text-muted-foreground">{card.type} - {card.rarity}</p>
+                                    <p className="text-sm mt-2">{card.description}</p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                          ) : null
+                        })
+                    ) : (
+                        <p className="text-muted-foreground p-4">No cards selected</p>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                <div className="mt-8">
+                  <Input
+                      type="search"
+                      placeholder="Search cards..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="mb-4"
+                  />
+                  {searchTerm && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                        {filteredCards.map(card => (
+                            <Tooltip key={card.id}>
+                              <TooltipTrigger asChild>
+                                <UiCard
+                                    className="cursor-pointer hover:bg-accent"
+                                    onClick={() => handleSelectCard(card.id)}
+                                >
+                                  <CardContent className="p-4">
+                                    <h3 className="font-semibold mb-1 truncate">{card.name}</h3>
+                                    <p className="text-sm text-muted-foreground mb-2">{card.type} - {card.rarity}</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {card.tags.map(tag => (
+                                          <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                                      ))}
+                                    </div>
+                                  </CardContent>
+                                </UiCard>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="w-64">
+                                <div className="flex flex-col items-center">
+                                  <img
+                                      src={card.image_url || "/placeholder.svg"}
+                                      alt={card.name}
+                                      className="w-24 h-24 object-cover mb-2 rounded"
+                                  />
+                                  <p className="text-sm font-semibold">{card.name}</p>
+                                  <p className="text-xs text-muted-foreground">{card.type} - {card.rarity}</p>
+                                  <p className="text-sm mt-2">{card.description}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                        ))}
+                      </div>
+                  )}
+                </div>
+              </>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      </TooltipProvider>
+  )
 }
