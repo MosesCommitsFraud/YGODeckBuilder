@@ -57,11 +57,21 @@ export default function Component() {
     setSelectedCardCounts(prevCounts => {
       const count = prevCounts[cardId] || 0
       if (count < 3) {
+        // Update the count for the selected card
         return { ...prevCounts, [cardId]: count + 1 }
       }
       return prevCounts
     })
-    setSelectedCards(prev => [...prev, cardId])
+
+    // Add the card to the selection if the count is less than 3
+    setSelectedCards(prev => {
+      const count = selectedCardCounts[cardId] || 0
+      if (count < 3) {
+        return [...prev, cardId]
+      }
+      return prev
+    })
+
     setSearchTerm("")
   }
 
@@ -78,12 +88,12 @@ export default function Component() {
       }
     })
 
-    // Remove only the first occurrence of the cardId
+    // Remove one instance of the card from the selectedCards array
     setSelectedCards(prev => {
-      const cardIndex = prev.findIndex(id => id === cardId)
-      if (cardIndex !== -1) {
+      const index = prev.lastIndexOf(cardId) // Find the last occurrence to remove
+      if (index !== -1) {
         const updatedSelectedCards = [...prev]
-        updatedSelectedCards.splice(cardIndex, 1)
+        updatedSelectedCards.splice(index, 1) // Remove the specific occurrence
         return updatedSelectedCards
       }
       return prev
@@ -109,8 +119,8 @@ export default function Component() {
                 <ScrollArea className="w-full whitespace-nowrap rounded-md border">
                   <div className="flex p-4 space-x-4">
                     {selectedCardDetails.length > 0 ? (
-                        selectedCardDetails.map(card => (
-                            <Tooltip key={card.id}>
+                        selectedCardDetails.map((card, index) => (
+                            <Tooltip key={card.id + "-" + index}> {/* Key uses both card id and index for uniqueness */}
                               <TooltipTrigger asChild>
                                 <div className="w-40 shrink-0">
                                   <div className="aspect-[3/4] relative rounded-lg overflow-hidden mb-2">
@@ -125,7 +135,7 @@ export default function Component() {
                                         className="absolute top-2 right-2 h-8 w-8"
                                         onClick={(e) => {
                                           e.stopPropagation()
-                                          handleRemoveCard(card.id)
+                                          handleRemoveCard(card.id) // Call remove card on click
                                         }}
                                     >
                                       <Trash2 className="h-4 w-4" />
