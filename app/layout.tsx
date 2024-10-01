@@ -1,4 +1,6 @@
+import DashboardLayout from "@/components/DashboardLayout"
 import "./globals.css"
+import {ReactNode} from "react";
 
 export const metadata = {
   title: "YGO Deck Builder",
@@ -6,13 +8,17 @@ export const metadata = {
 }
 
 export default function RootLayout({
-                                     children,
+                                       children,
                                    }: {
-  children: React.ReactNode
+    children: ReactNode
 }) {
-  return (
-      <html lang="en">
-      <body className="font-sans antialiased">{children}</body>
-      </html>
-  )
+    return (
+        <html lang="en">
+        <body>
+        <DashboardLayout>
+            {children}
+        </DashboardLayout>
+        </body>
+        </html>
+    )
 }
